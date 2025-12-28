@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Demand Forecast MVP • Predict</title>
+  <meta name="description" content="Prediction form (stub) for demand forecasting." />
+  <link rel="stylesheet" href="/ui/assets/styles.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/ui/">
+        <span class="brand-dot"></span>
+        <span>Demand Forecast MVP</span>
+        <span class="badge">UI stub</span>
+      </a>
+
+      <nav class="nav">
+        <a class="nav-link" href="/ui/">Home</a>
+        <a class="nav-link" href="/ui/predict">Predict</a>
+        <a class="nav-link" href="/ui/analytics">Analytics</a>
+        <a class="nav-link" href="/ui/about">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="page-head">
+      <div>
+        <h1>Predict</h1>
+  
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card col-6">
+        <div class="card-head">
+          <h2>Inputs</h2>
+          <span class="pill">Stub</span>
+        </div>
+
+        <form id="predictForm" class="form">
+          <label class="field">
+            <span>Date</span>
+            <input id="inpDate" type="date" />
+            <small class="muted">Allowed window: <span id="dateHint"></span></small>
+          </label>
+
+          <div class="row">
+            <label class="field">
+              <span>Store</span>
+              <input id="inpStore" type="number" min="1" step="1" />
+            </label>
+
+            <label class="field">
+              <span>Item</span>
+              <input id="inpItem" type="number" min="1" step="1" placeholder="e.g., 99197" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Forecast horizon</span>
+            <select id="inpHorizon">
+              <option value="1">Next-day</option>
+              <option value="7">Next-week</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Model</span>
+            <select id="inpModel"></select>
+          </label>
+
+          <button class="btn" type="submit">Run prediction</button>
+
+        </form>
+      </div>
+
+      <div class="card col-6">
+        <div class="card-head">
+          <h2>Output</h2>
+          <span class="pill">Preview</span>
+        </div>
+
+        <div id="outEmpty" class="empty">
+          Fill the form and click <b>Run prediction</b>.
+        </div>
+
+        <div id="outCard" class="result hidden">
+          <div class="result-title">Prediction result</div>
+
+          <div class="facts">
+            <div class="fact">
+              <div class="fact-k">Model</div>
+              <div class="fact-v" id="outModel">—</div>
+            </div>
+            <div class="fact">
+              <div class="fact-k">Target date</div>
+              <div class="fact-v" id="outTargetDate">—</div>
+            </div>
+            <div class="fact">
+              <div class="fact-k">Predicted sales</div>
+              <div class="fact-v" id="outPred">—</div>
+            </div>
+            <div class="fact">
+              <div class="fact-k">Confidence band</div>
+              <div class="fact-v" id="outBand">—</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>Demand Forecast MVP • Predict</span>
+      <span class="muted">Stub-only (backend-ready)</span>
+    </div>
+  </footer>
+
+  <script type="module" src="/ui/assets/app.js"></script>
+  <script type="module" src="/ui/assets/predict.js"></script>
+</body>
+</html>

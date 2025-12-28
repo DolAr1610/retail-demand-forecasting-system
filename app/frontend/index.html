@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Demand Forecast MVP • Home</title>
+  <meta name="description" content="Documentation-first UI stub for a demand forecasting project." />
+  <link rel="stylesheet" href="/ui/assets/styles.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/ui/">
+        <span class="brand-dot"></span>
+        <span>Demand Forecast MVP</span>
+        <span class="badge">UI stub</span>
+      </a>
+
+      <nav class="nav">
+        <a class="nav-link" href="/ui/">Home</a>
+        <a class="nav-link" href="/ui/predict">Predict</a>
+        <a class="nav-link" href="/ui/analytics">Analytics</a>
+        <a class="nav-link" href="/ui/about">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div>
+        <h1>Demand Forecasting Dashboard</h1>
+
+
+        <div class="hero-actions">
+          <!-- ✅ IMPORTANT: no .html here -->
+          <a class="btn" href="/ui/predict">Open Predict</a>
+          <a class="btn btn-ghost" href="/ui/analytics">Open Analytics</a>
+        </div>
+      </div>
+
+      <div class="hero-card">
+        <div class="kpi">
+          <div class="kpi-label">Dataset window (placeholder)</div>
+          <div class="kpi-value" id="dsWindow">1 Jan 2013 → 15 Aug 2017</div>
+          <div class="kpi-sub">Shown as a stable range for documentation & UI layout.</div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi mini">
+            <div class="kpi-label">Store</div>
+            <div class="kpi-value" id="subsetStore">1</div>
+            <div class="kpi-sub">Single-store subset (demo).</div>
+          </div>
+          <div class="kpi mini">
+            <div class="kpi-label">Families</div>
+            <div class="kpi-value" id="subsetFamilies">5</div>
+            <div class="kpi-sub">Top families by volume.</div>
+          </div>
+          <div class="kpi mini">
+            <div class="kpi-label">Items</div>
+            <div class="kpi-value" id="subsetItems">200</div>
+            <div class="kpi-sub">40 items × 5 families.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card col-6">
+        <div class="card-head">
+          <h2>Global metrics (range)</h2>
+          <span class="pill">Latest run </span>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-name">RMSE (log1p)</div>
+            <div class="metric-val">0.44 – 0.62</div>
+            <div class="metric-note">From strong model to naive persistence baseline.</div>
+          </div>
+          <div class="metric">
+            <div class="metric-name">R²</div>
+            <div class="metric-val">0.61 – 0.81</div>
+            <div class="metric-note">Higher is better.</div>
+          </div>
+          <div class="metric">
+            <div class="metric-name">WAPE (sales)</div>
+            <div class="metric-val">0.26 – 0.43</div>
+            <div class="metric-note">Volume-weighted absolute error.</div>
+          </div>
+          <div class="metric">
+            <div class="metric-name">MAE (sales)</div>
+            <div class="metric-val">~9 – 16</div>
+            <div class="metric-note">Average absolute error in sales units.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="card col-6">
+        <div class="card-head">
+          <h2>Model info</h2>
+          <span class="pill">What’s included</span>
+        </div>
+
+        <ul class="list">
+          <li><b>Persistence baseline</b> — assumes the next value equals the most recent observed value.</li>
+          <li><b>Rolling Mean (7 days)</b> — a short-term moving average to smooth noise.</li>
+          <li><b>Gradient-Boosted Trees</b> — strong non-linear model for structured tabular signals.</li>
+          <li><b>Random Forest</b> — robust ensemble model, stable across noisy retail patterns.</li>
+        </ul>
+
+      </div>
+
+      <div class="card col-12">
+        <div class="card-head">
+          <h2>Quick navigation</h2>
+          <span class="pill">Dashboard sections</span>
+        </div>
+
+        <div class="quick-links">
+          <a class="quick" href="/ui/predict">
+            <div class="quick-title">Predict</div>
+            <div class="quick-sub">Inputs + a placeholder results panel</div>
+          </a>
+          <a class="quick" href="/ui/analytics">
+            <div class="quick-title">Analytics</div>
+            <div class="quick-sub">Metrics table + simple comparison charts</div>
+          </a>
+          <a class="quick" href="/ui/about">
+            <div class="quick-title">About</div>
+            <div class="quick-sub">Purpose, audience, workflow (non-technical)</div>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>Demand Forecast MVP • UI placeholder for documentation</span>
+      <span class="muted">Routes are /ui/predict, /ui/analytics, /ui/about</span>
+    </div>
+  </footer>
+
+  <script type="module" src="/ui/assets/app.js"></script>
+</body>
+</html>

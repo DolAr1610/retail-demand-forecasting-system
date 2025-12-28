@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Demand Forecast MVP • About</title>
+  <meta name="description" content="About the demand forecasting system: purpose, users, and workflow." />
+  <link rel="stylesheet" href="/ui/assets/styles.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/ui/">
+        <span class="brand-dot"></span>
+        <span>Demand Forecast MVP</span>
+        <span class="badge">UI stub</span>
+      </a>
+
+      <nav class="nav">
+        <a class="nav-link" href="/ui/">Home</a>
+        <a class="nav-link" href="/ui/predict">Predict</a>
+        <a class="nav-link" href="/ui/analytics">Analytics</a>
+        <a class="nav-link" href="/ui/about">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="page-head">
+      <div>
+        <h1>About this system</h1>
+        <p class="lead">
+          Demand Forecast MVP is a documentation-first dashboard for a retail demand forecasting project.
+          It helps present the workflow and results in a clean, understandable way — without technical overload.
+        </p>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card col-12">
+        <div class="card-head">
+          <h2>What it is</h2>
+          <span class="pill">Purpose</span>
+        </div>
+        <p class="text">
+          The system supports a typical forecasting workflow: define a stable dataset window, build a compact subset
+          of products, train several models (from simple baselines to tree-based ML), and compare their quality using
+          clear metrics. The interface is structured so it can be easily used in a thesis, documentation, or a demo
+          presentation where readability matters.
+        </p>
+      </div>
+
+      <div class="card col-6">
+        <div class="card-head">
+          <h2>Who it is for</h2>
+          <span class="pill">Audience</span>
+        </div>
+        <ul class="list">
+          <li><b>Students & researchers</b> — to demonstrate methodology and model comparison.</li>
+          <li><b>Analysts</b> — to confirm that models improve over baselines.</li>
+          <li><b>Stakeholders</b> — to understand results without deep technical details.</li>
+        </ul>
+      </div>
+
+      <div class="card col-6">
+        <div class="card-head">
+          <h2>What you can show</h2>
+          <span class="pill">Deliverables</span>
+        </div>
+        <ul class="list">
+          <li>Dataset window + subset definition (store, families, items).</li>
+          <li>Model list (baselines + ML models).</li>
+          <li>Metrics table and compact charts in a “presentation-ready” format.</li>
+          <li>A prediction page that can be connected to a backend later.</li>
+        </ul>
+      </div>
+
+      <div class="card col-12">
+        <div class="card-head">
+          <h2>How pages are organized</h2>
+          <span class="pill">Navigation</span>
+        </div>
+
+        <div class="facts">
+          <div class="fact">
+            <div class="fact-k">Home</div>
+            <div class="fact-v">Dataset context + model list + global metric ranges</div>
+          </div>
+          <div class="fact">
+            <div class="fact-k">Predict</div>
+            <div class="fact-v">Inputs + clean output card (stub now, backend-ready later)</div>
+          </div>
+          <div class="fact">
+            <div class="fact-k">Analytics</div>
+            <div class="fact-v">Model metrics table + quick visual comparison</div>
+          </div>
+          <div class="fact">
+            <div class="fact-k">About</div>
+            <div class="fact-v">Project description and intended use</div>
+          </div>
+        </div>
+
+        <div class="hint">
+          Keep this page non-technical for documentation. Put deep methodology details into a separate chapter.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>Demand Forecast MVP • About</span>
+      <span class="muted">Clear explanation for documentation</span>
+    </div>
+  </footer>
+
+  <script type="module" src="/ui/assets/app.js"></script>
+</body>
+</html>
