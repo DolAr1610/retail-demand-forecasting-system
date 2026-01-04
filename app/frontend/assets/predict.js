@@ -1,79 +1,123 @@
-import { APP_CONFIG } from "./app.js";
+import { API, APP_CONFIG, fmtNum, setText, setSelectOptions } from "./app.js";
 
-function $(id) {
-  return document.getElementById(id);
+function isSelect(el) { return el && el.tagName === "SELECT"; }
+
+async function apiGet(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`GET ${url} -> ${r.status}`);
+  return r.json();
 }
-
-function toISO(d) {
-  const pad = (x) => String(x).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function addDays(iso, days) {
-  const d = new Date(iso + "T00:00:00");
-  d.setDate(d.getDate() + Number(days));
-  return toISO(d);
-}
-
-function seedValue(store, item, horizon) {
-  // deterministic stub number for repeatable screenshots
-  const s = Number(store || 1);
-  const i = Number(item || 1);
-  const h = Number(horizon || 1);
-  const base = (s * 17 + i * 0.013 + h * 3.7) % 1;
-  const pred = 15 + base * 40; // 15..55
-  return Math.round(pred * 10) / 10;
-}
-
-function init() {
-  const dateHint = $("dateHint");
-  if (dateHint) {
-    dateHint.textContent = `${APP_CONFIG.dataset.minDateLabel} → ${APP_CONFIG.dataset.maxDateLabel}`;
-  }
-
-  const inpDate = $("inpDate");
-  if (inpDate) {
-    inpDate.min = APP_CONFIG.dataset.minDate;
-    inpDate.max = APP_CONFIG.dataset.maxDate;
-    inpDate.value = APP_CONFIG.dataset.maxDate;
-  }
-
-  const inpStore = $("inpStore");
-  if (inpStore) inpStore.value = String(APP_CONFIG.subset.store);
-
-  const inpModel = $("inpModel");
-  if (inpModel) {
-    inpModel.innerHTML = APP_CONFIG.models
-      .map((m) => `<option value="${m.id}">${m.name}</option>`)
-      .join("");
-    inpModel.value = "gbt";
-  }
-
-  $("predictForm")?.addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    const date = $("inpDate")?.value || APP_CONFIG.dataset.maxDate;
-    const store = $("inpStore")?.value || APP_CONFIG.subset.store;
-    const item = $("inpItem")?.value || 1;
-    const horizon = $("inpHorizon")?.value || 1;
-    const modelId = $("inpModel")?.value || "gbt";
-
-    const modelName = APP_CONFIG.models.find((m) => m.id === modelId)?.name ?? modelId;
-
-    const targetDate = addDays(date, horizon);
-    const pred = seedValue(store, item, horizon);
-
-    const bandLo = Math.max(0, Math.round((pred * 0.82) * 10) / 10);
-    const bandHi = Math.round((pred * 1.18) * 10) / 10;
-
-    $("outEmpty")?.classList.add("hidden");
-    $("outCard")?.classList.remove("hidden");
-
-    $("outModel").textContent = modelName;
-    $("outTargetDate").textContent = targetDate;
-    $("outPred").textContent = `${pred} units`;
-    $("outBand").textContent = `${bandLo} – ${bandHi} units`;
+async function apiPost(url, body) {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
+  const txt = await r.text();
+  let data = null;
+  try { data = txt ? JSON.parse(txt) : null; } catch {}
+  if (!r.ok) throw new Error((data && data.detail) ? data.detail : `POST ${url} -> ${r.status}: ${txt}`);
+  return data;
 }
 
-init();
+function pick(el, fallback = "") {
+  if (!el) return fallback;
+  return (el.value ?? fallback).toString().trim();
+}
+function pickInt(el, fallback = 0) {
+  const v = parseInt(pick(el, ""), 10);
+  return Number.isFinite(v) ? v : fallback;
+}
+
+function parseRecentSales(text) {
+  const s = (text ?? "").toString().trim();
+  if (!s) return null;
+  const arr = s.split(",").map(x => x.trim()).filter(Boolean).map(Number).filter(Number.isFinite);
+  return arr.length ? arr : null;
+}
+
+function showError(msg) {
+  const box = document.getElementById("errorBox");
+  if (!box) { alert(msg); return; }
+  box.textContent = msg;
+  box.style.display = "block";
+}
+function clearError() {
+  const box = document.getElementById("errorBox");
+  if (!box) return;
+  box.textContent = "";
+  box.style.display = "none";
+}
+
+async function init() {
+  clearError();
+
+  const inpDate = document.getElementById("inpDate");
+  const inpStore = document.getElementById("inpStore");
+  const selModel = document.getElementById("selModel");
+
+  const ctx = await apiGet(`${API}/predict/context`);
+
+  setText("ctxRange", `${ctx.min_date} → ${ctx.max_date}`);
+
+  if (inpDate) {
+    inpDate.min = ctx.min_date;
+    inpDate.max = ctx.max_date;
+    inpDate.value = ctx.max_date;
+  }
+
+  if (inpStore) inpStore.value = (ctx.store_nbr ?? APP_CONFIG.store_nbr ?? "").toString();
+
+  if (isSelect(selModel) && Array.isArray(ctx.models) && ctx.models.length) {
+    setSelectOptions(selModel, ctx.models.map(m => ({ value: m.id, label: m.name })));
+    selModel.value = "best_model";
+  }
+}
+
+async function onSubmit(e) {
+  e.preventDefault();
+  clearError();
+
+  const inpDate = document.getElementById("inpDate");
+  const inpStore = document.getElementById("inpStore");
+  const inpItem = document.getElementById("inpItem");
+  const inpHorizon = document.getElementById("inpHorizon");
+  const selModel = document.getElementById("selModel");
+  const inpRecentSales = document.getElementById("inpRecentSales"); // додай textarea в html
+
+  const asOf = pick(inpDate);
+  const store = pickInt(inpStore, APP_CONFIG.store_nbr);
+  const item = pickInt(inpItem, 0);
+  const horizon = pickInt(inpHorizon, 1);
+  const model_id = pick(selModel, "best_model");
+  const recent_sales = parseRecentSales(pick(inpRecentSales, ""));
+
+  if (!asOf) return showError("Вкажи дату (as_of_date).");
+  if (!store) return showError("Вкажи store_nbr.");
+  if (!item) return showError("Вкажи item_nbr (число).");
+
+  const payload = { date: asOf, store_nbr: store, item_nbr: item, horizon, model_id };
+  if (recent_sales) payload.recent_sales = recent_sales;
+
+  try {
+    const resp = await apiPost(`${API}/predict/point`, payload);
+
+    setText("outAsOf", asOf);
+    setText("outTarget", resp.target_date);
+    setText("outModel", resp.model_id);
+    setText("outPredLog", fmtNum(resp.pred_log, 6));
+    setText("outPredSales", fmtNum(resp.pred_sales, 4));
+
+    const lo = resp.band_low;
+    const hi = resp.band_high;
+    setText("outBand", (lo != null && hi != null) ? `${fmtNum(lo, 4)} .. ${fmtNum(hi, 4)}` : "—");
+  } catch (err) {
+    showError(err.message || String(err));
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  init().catch(err => showError(err.message || String(err)));
+  const form = document.getElementById("frmPredict");
+  if (form) form.addEventListener("submit", onSubmit);
+});

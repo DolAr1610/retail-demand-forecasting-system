@@ -1,29 +1,36 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from __future__ import annotations
 
-from app.backend.settings import get_settings
-from app.backend.utils.logging import setup_logging
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 from pathlib import Path
 
-from app.backend.api.routes_health import router as health_router
-from app.backend.api.routes_data import router as data_router
-from app.backend.api.routes_metrics import router as metrics_router
-from app.backend.api.routes_predict import router as predict_router
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from starlette.responses import FileResponse, PlainTextResponse, RedirectResponse
+
+from app.backend.settings import settings
+
+# якщо ці роутери в тебе є — ок
+try:
+    from app.backend.api.routes_predict import router as predict_router
+except Exception:
+    predict_router = None
+
+try:
+    from app.backend.api.routes_data import router as data_router
+except Exception:
+    data_router = None
+
+def _cors_list(v: str) -> list[str]:
+    if not v:
+        return []
+    return [x.strip() for x in v.split(",") if x.strip()]
 
 
 def create_app() -> FastAPI:
-    settings = get_settings()
-    setup_logging(settings.log_level)
+    app = FastAPI(title="Forecast API", version="0.1.0")
 
-    app = FastAPI(
-        title="Demand Forecast MVP API",
-        version="0.1.0",
-    )
+    origins = _cors_list(getattr(settings, "cors_origins", ""))
 
-    # CORS for Streamlit frontend
-    origins = settings.cors_origins_list()
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
@@ -32,39 +39,52 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(health_router)
-    app.include_router(data_router)
-    app.include_router(metrics_router)
-    app.include_router(predict_router)
+    # --- API routers ---
+    if data_router:
+        app.include_router(data_router, prefix=settings.api_prefix, tags=["data"])
+    if predict_router:
+        app.include_router(predict_router, prefix=settings.api_prefix, tags=["predict"])
+
+    # --- optional: прибрати 404 в логах (не критично, але акуратно) ---
+    @app.get("/metrics", include_in_schema=False)
+    def metrics_stub():
+        return PlainTextResponse("ok\n")
+
+    @app.get(f"{settings.api_prefix}/metrics", include_in_schema=False)
+    @app.get(f"{settings.api_prefix}/analytics/metrics", include_in_schema=False)
+    def api_metrics_stub():
+        return {"ok": True}
+
+    # --- UI ---
+    frontend_dir = Path(settings.frontend_dir).resolve()
+    assets_dir = frontend_dir / "assets"
+
+    if assets_dir.exists():
+        app.mount(f"{settings.ui_prefix}/assets", StaticFiles(directory=str(assets_dir)), name="ui-assets")
+
+    # ✅ важливо: цей роут має бути ДО app.mount("/ui", ...)
+    predict_html = frontend_dir / "predict.html"
+
+    @app.get(f"{settings.ui_prefix}/predict", include_in_schema=False)
+    def ui_predict():
+        if predict_html.exists():
+            return FileResponse(str(predict_html))
+        # fallback: якщо нема predict.html — покажемо index.html
+        index_html = frontend_dir / "index.html"
+        if index_html.exists():
+            return FileResponse(str(index_html))
+        return PlainTextResponse("predict.html not found", status_code=404)
+
+    # root → /ui/
+    @app.get("/", include_in_schema=False)
+    def root():
+        return RedirectResponse(url=f"{settings.ui_prefix}/")
+
+    # Static UI (index.html і т.д.)
+    if frontend_dir.exists():
+        app.mount(settings.ui_prefix, StaticFiles(directory=str(frontend_dir), html=True), name="ui")
 
     return app
 
 
 app = create_app()
-
-FRONT_DIR = Path(__file__).resolve().parents[1] / "frontend"
-ASSETS_DIR = FRONT_DIR / "assets"
-
-# Статичні файли
-app.mount("/ui/assets", StaticFiles(directory=str(ASSETS_DIR)), name="ui-assets")
-
-# Сторінки UI
-@app.get("/ui", include_in_schema=False)
-def ui_index():
-    return FileResponse(str(FRONT_DIR / "index.html"))
-
-@app.get("/ui/", include_in_schema=False)
-def ui_index_slash():
-    return FileResponse(str(FRONT_DIR / "index.html"))
-
-@app.get("/ui/predict", include_in_schema=False)
-def ui_predict():
-    return FileResponse(str(FRONT_DIR / "predict.html"))
-
-@app.get("/ui/analytics", include_in_schema=False)
-def ui_analytics():
-    return FileResponse(str(FRONT_DIR / "analytics.html"))
-
-@app.get("/ui/about", include_in_schema=False)
-def ui_about():
-    return FileResponse(str(FRONT_DIR / "about.html"))

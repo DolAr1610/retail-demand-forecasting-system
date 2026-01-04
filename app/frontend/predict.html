@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Demand Forecast MVP • Predict</title>
-  <meta name="description" content="Prediction form (stub) for demand forecasting." />
+  <meta name="description" content="Prediction form (live) for demand forecasting." />
   <link rel="stylesheet" href="/ui/assets/styles.css" />
 </head>
 
@@ -30,7 +30,6 @@
     <section class="page-head">
       <div>
         <h1>Predict</h1>
-  
       </div>
     </section>
 
@@ -38,7 +37,7 @@
       <div class="card col-6">
         <div class="card-head">
           <h2>Inputs</h2>
-          <span class="pill">Stub</span>
+          <span class="pill">Live (API)</span>
         </div>
 
         <form id="predictForm" class="form">
@@ -65,6 +64,8 @@
             <select id="inpHorizon">
               <option value="1">Next-day</option>
               <option value="7">Next-week</option>
+              <option value="14">Next-2-weeks</option>
+              <option value="30">Next-30-days</option>
             </select>
           </label>
 
@@ -81,12 +82,14 @@
       <div class="card col-6">
         <div class="card-head">
           <h2>Output</h2>
-          <span class="pill">Preview</span>
+          <span class="pill">Live</span>
         </div>
 
         <div id="outEmpty" class="empty">
           Fill the form and click <b>Run prediction</b>.
         </div>
+
+        <div id="outError" class="hint hidden"></div>
 
         <div id="outCard" class="result hidden">
           <div class="result-title">Prediction result</div>
@@ -110,6 +113,7 @@
             </div>
           </div>
 
+          <div id="outWarn" class="hint hidden"></div>
         </div>
       </div>
     </section>
@@ -118,7 +122,7 @@
   <footer class="footer">
     <div class="container footer-inner">
       <span>Demand Forecast MVP • Predict</span>
-      <span class="muted">Stub-only (backend-ready)</span>
+      <span class="muted">Live predict via FastAPI + Spark model</span>
     </div>
   </footer>
 

@@ -1,49 +1,40 @@
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from __future__ import annotations
+
+from typing import Optional
+from pydantic import BaseModel, Field, AliasChoices
 
 
-class HealthResponse(BaseModel):
-    status: str = "ok"
+class ModelInfo(BaseModel):
+    id: str
+    name: str
 
 
-class DataStatusResponse(BaseModel):
-    artifacts_dir: str
-    has_predictions: bool
-    has_metrics: bool
-    has_model_info: bool
-    has_lookups: bool
-
-    stores_count: Optional[int] = None
-    items_count: Optional[int] = None
-
-    date_min: Optional[str] = None  # ISO date
-    date_max: Optional[str] = None  # ISO date
-
-    notes: List[str] = Field(default_factory=list)
+class PredictContextResponse(BaseModel):
+    min_date: str
+    max_date: str
+    store_nbr: Optional[int] = None
+    models: list[ModelInfo] = Field(default_factory=list)
+    items: list[int] = Field(default_factory=list)
 
 
-class GlobalMetricsResponse(BaseModel):
-    metrics: Dict[str, Any] = Field(default_factory=dict)
-
-
-class ListResponse(BaseModel):
-    values: List[int]
-
-
-class PredictRow(BaseModel):
-    date: str
+class PredictPointRequest(BaseModel):
+    origin_date: str = Field(validation_alias=AliasChoices("origin_date", "date"))
     store_nbr: int
     item_nbr: int
-    actual: float
-    pred: float
-    abs_error: float
-    ape: Optional[float] = None
+    horizon: int = 1
+    model_id: str = "best_model"
+    recent_sales: Optional[list[float]] = None
 
 
-class PredictTimeseriesResponse(BaseModel):
+class PredictPointResponse(BaseModel):
+    origin_date: str
+    target_date: str
     store_nbr: int
     item_nbr: int
-    date_from: Optional[str] = None
-    date_to: Optional[str] = None
-    rows: List[PredictRow]
-    count: int
+    horizon: int
+    model_id: str
+    pred_log: float
+    pred_sales: float
+    band_low: Optional[float] = None
+    band_high: Optional[float] = None
+    warnings: list[str] = Field(default_factory=list)

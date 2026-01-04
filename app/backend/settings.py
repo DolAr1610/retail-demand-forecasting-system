@@ -1,32 +1,34 @@
-from functools import lru_cache
-from typing import List
+from __future__ import annotations
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, AliasChoices
 
 
 class Settings(BaseSettings):
     """
-    ENV (optional):
-      FAVORITA_ARTIFACTS_DIR=data/artifacts/active
-      FAVORITA_CORS_ALLOW_ORIGINS=http://localhost:8501,http://127.0.0.1:8501
-      FAVORITA_LOG_LEVEL=INFO
-      FAVORITA_DEFAULT_STORE_NBR=45
+    Supports BOTH env styles:
+      - MODELS_DIR / FRONTEND_DIR
+      - APP_MODELS_DIR / APP_FRONTEND_DIR
     """
-    model_config = SettingsConfigDict(env_prefix="FAVORITA_", case_sensitive=False)
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
-    artifacts_dir: str = "data/artifacts/active"
-    cors_allow_origins: str = "*"  
-    log_level: str = "INFO"
+    api_prefix: str = Field(default="/api", validation_alias=AliasChoices("API_PREFIX", "APP_API_PREFIX"))
+    ui_prefix: str = Field(default="/ui", validation_alias=AliasChoices("UI_PREFIX", "APP_UI_PREFIX"))
 
-    default_store_nbr: int = 45
+    models_dir: str = Field(default="data/models", validation_alias=AliasChoices("MODELS_DIR", "APP_MODELS_DIR"))
+    frontend_dir: str = Field(default="app/frontend", validation_alias=AliasChoices("FRONTEND_DIR", "APP_FRONTEND_DIR"))
 
-    def cors_origins_list(self) -> List[str]:
-        val = (self.cors_allow_origins or "").strip()
-        if val == "*" or val == "":
-            return ["*"]
-        return [x.strip() for x in val.split(",") if x.strip()]
+    cors_origins: str | None = Field(default=None, validation_alias=AliasChoices("CORS_ORIGINS", "APP_CORS_ORIGINS"))
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        v = getattr(self, "cors_origins", "")
+        return [x.strip() for x in v.split(",") if x.strip()]
 
 
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
+settings = Settings()

@@ -6,21 +6,24 @@ export const APP_CONFIG = {
     maxDateLabel: "15 Aug 2017",
   },
   subset: {
-    store: 1,
+    store: 45,
     families: 5,
     items: 200,
   },
   models: [
     { id: "persist", name: "Persistence baseline" },
     { id: "roll7", name: "Rolling Mean (7 days)" },
+    { id: "lr", name: "Linear (Ridge)" },
     { id: "gbt", name: "Gradient-Boosted Trees" },
     { id: "rf", name: "Random Forest" },
+    { id: "xgb", name: "XGBoost" },
+    { id: "lgbm", name: "LightGBM" },
   ],
 };
 
 // Highlight active nav item based on current path
 export function setActiveNav() {
-  const path = window.location.pathname.replace(/\/+$/, ""); // trim trailing slash
+  const path = window.location.pathname.replace(/\/+$/, "");
 
   document.querySelectorAll(".nav-link").forEach((a) => a.classList.remove("active"));
 
@@ -54,7 +57,6 @@ export function setText(id, text) {
   if (el) el.textContent = text;
 }
 
-// Apply config placeholders where present
 export function applyConfigPlaceholders() {
   setText("dsWindow", `${APP_CONFIG.dataset.minDateLabel} → ${APP_CONFIG.dataset.maxDateLabel}`);
   setText("subsetStore", String(APP_CONFIG.subset.store));
@@ -67,6 +69,5 @@ export function applyConfigPlaceholders() {
   setText("ctxItems", String(APP_CONFIG.subset.items));
 }
 
-// Boot
 setActiveNav();
 applyConfigPlaceholders();
