@@ -1,78 +1,236 @@
-import { APP_CONFIG } from "./app.js";
+import { APP_CONFIG, loadAppConfig } from "./app.js";
 
 function $(id) {
   return document.getElementById(id);
 }
 
-function toISO(d) {
-  const pad = (x) => String(x).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+async function fetchJson(url) {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  return await res.json();
 }
 
-function addDays(iso, days) {
-  const d = new Date(iso + "T00:00:00");
-  d.setDate(d.getDate() + Number(days));
-  return toISO(d);
+function fillSelect(selectEl, values, formatter = (v) => ({ value: v, label: String(v) })) {
+  if (!selectEl) return;
+  selectEl.innerHTML = "";
+
+  values.forEach((v) => {
+    const opt = document.createElement("option");
+    const mapped = formatter(v);
+    opt.value = mapped.value;
+    opt.textContent = mapped.label;
+    selectEl.appendChild(opt);
+  });
 }
 
-function seedValue(store, item, horizon) {
-  // deterministic stub number for repeatable screenshots
-  const s = Number(store || 1);
-  const i = Number(item || 1);
-  const h = Number(horizon || 1);
-  const base = (s * 17 + i * 0.013 + h * 3.7) % 1;
-  const pred = 15 + base * 40; // 15..55
-  return Math.round(pred * 10) / 10;
+let validItemsForStore = new Set();
+let aliasToItemMap = new Map();
+let itemToAliasMap = new Map();
+
+function normalizeAlias(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
 }
 
-function init() {
+function resolveItemInput(rawValue) {
+  const raw = String(rawValue || "").trim();
+  if (!raw) return null;
+
+  const normalized = normalizeAlias(raw);
+
+  if (aliasToItemMap.has(normalized)) {
+    return String(aliasToItemMap.get(normalized));
+  }
+
+  const bracketMatch = raw.match(/\((\d+)\)\s*$/);
+  if (bracketMatch) {
+    const candidate = bracketMatch[1];
+    if (validItemsForStore.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  if (/^\d+$/.test(raw) && validItemsForStore.has(raw)) {
+    return raw;
+  }
+
+  return null;
+}
+
+async function loadStores() {
+  const storeSelect = $("inpStore");
+  if (!storeSelect) return;
+
+  const stores = await fetchJson("/data/stores");
+  fillSelect(storeSelect, stores, (v) => ({
+    value: String(v),
+    label: `Store ${v}`,
+  }));
+
+  const defaultStore = String(APP_CONFIG.subset.store || stores[0] || "");
+  if (defaultStore && stores.map(String).includes(defaultStore)) {
+    storeSelect.value = defaultStore;
+  } else if (stores.length) {
+    storeSelect.value = String(stores[0]);
+  }
+}
+
+async function loadItemsForStore(storeId) {
+  const itemHint = $("itemHint");
+  const itemInput = $("inpItem");
+
+  validItemsForStore = new Set();
+  aliasToItemMap = new Map();
+  itemToAliasMap = new Map();
+
+  if (!storeId) {
+    if (itemHint) itemHint.textContent = "Choose store first.";
+    return;
+  }
+
+  const rows = await fetchJson(`/data/items-labeled?store=${encodeURIComponent(storeId)}`);
+
+  rows.forEach((row) => {
+    const itemNbr = String(row.item_nbr);
+    const displayName = String(row.display_name || `Item ${itemNbr}`);
+
+    validItemsForStore.add(itemNbr);
+    aliasToItemMap.set(normalizeAlias(displayName), itemNbr);
+    itemToAliasMap.set(itemNbr, displayName);
+    aliasToItemMap.set(normalizeAlias(`${displayName} (${itemNbr})`), itemNbr);
+  });
+
+  if (itemHint) {
+    itemHint.textContent =
+      `Loaded ${rows.length} trained items for Store ${storeId}. ` +
+      `You can enter Item 1 or numeric item_nbr.`;
+  }
+
+  if (itemInput && itemInput.value) {
+    const resolved = resolveItemInput(itemInput.value);
+    if (!resolved) {
+      itemInput.value = "";
+    }
+  }
+}
+
+function loadModels() {
+  const modelSelect = $("inpModel");
+  if (!modelSelect) return;
+
+  const models = APP_CONFIG.models?.length
+    ? APP_CONFIG.models
+    : [{ id: "model", name: "Model" }];
+
+  fillSelect(modelSelect, models, (m) => ({
+    value: m.id,
+    label: m.name,
+  }));
+}
+
+function renderPrediction(payload) {
+  const row = payload.rows?.[0];
+
+  $("outEmpty")?.classList.add("hidden");
+  $("outCard")?.classList.remove("hidden");
+
+  if (!row) {
+    $("outModel").textContent = payload.model_name || "Model";
+    $("outTargetDate").textContent = payload.date_from || "—";
+    $("outItemLabel").textContent = "—";
+    $("outPred").textContent = "No forecast";
+    $("outActual").textContent = "—";
+    $("outAbsError").textContent = "—";
+    return;
+  }
+
+  const alias = itemToAliasMap.get(String(row.item_nbr));
+
+  $("outModel").textContent = payload.model_name || "Model";
+  $("outTargetDate").textContent = row.date;
+  $("outItemLabel").textContent = alias
+    ? `${alias} (${row.item_nbr})`
+    : String(row.item_nbr);
+
+  $("outPred").textContent = `${Number(row.pred).toFixed(2)} units`;
+
+  if (row.actual !== null && row.actual !== undefined) {
+    $("outActual").textContent = `${Number(row.actual).toFixed(2)} units`;
+    $("outAbsError").textContent =
+      row.abs_error !== null && row.abs_error !== undefined
+        ? `${Number(row.abs_error).toFixed(2)}`
+        : "—";
+  } else {
+    $("outActual").textContent = "—";
+    $("outAbsError").textContent = "—";
+  }
+}
+
+async function init() {
+  await loadAppConfig();
+
   const dateHint = $("dateHint");
   if (dateHint) {
     dateHint.textContent = `${APP_CONFIG.dataset.minDateLabel} → ${APP_CONFIG.dataset.maxDateLabel}`;
   }
 
-  const inpDate = $("inpDate");
-  if (inpDate) {
-    inpDate.min = APP_CONFIG.dataset.minDate;
-    inpDate.max = APP_CONFIG.dataset.maxDate;
-    inpDate.value = APP_CONFIG.dataset.maxDate;
+  const dateInput = $("inpDate");
+  if (dateInput) {
+    dateInput.min = APP_CONFIG.dataset.minDate;
+    dateInput.max = APP_CONFIG.dataset.maxDate;
+    dateInput.value = APP_CONFIG.dataset.minDate;
   }
 
-  const inpStore = $("inpStore");
-  if (inpStore) inpStore.value = String(APP_CONFIG.subset.store);
+  await loadStores();
+  loadModels();
 
-  const inpModel = $("inpModel");
-  if (inpModel) {
-    inpModel.innerHTML = APP_CONFIG.models
-      .map((m) => `<option value="${m.id}">${m.name}</option>`)
-      .join("");
-    inpModel.value = "gbt";
+  const storeSelect = $("inpStore");
+  if (storeSelect) {
+    await loadItemsForStore(storeSelect.value);
+
+    storeSelect.addEventListener("change", async () => {
+      await loadItemsForStore(storeSelect.value);
+    });
   }
 
-  $("predictForm")?.addEventListener("submit", (e) => {
+  $("predictForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const date = $("inpDate")?.value || APP_CONFIG.dataset.maxDate;
-    const store = $("inpStore")?.value || APP_CONFIG.subset.store;
-    const item = $("inpItem")?.value || 1;
-    const horizon = $("inpHorizon")?.value || 1;
-    const modelId = $("inpModel")?.value || "gbt";
+    const store = $("inpStore")?.value?.trim();
+    const itemRaw = $("inpItem")?.value?.trim();
+    const date = $("inpDate")?.value;
+    const model = $("inpModel")?.value;
 
-    const modelName = APP_CONFIG.models.find((m) => m.id === modelId)?.name ?? modelId;
+    if (!store || !itemRaw || !date) {
+      alert("Choose store, enter item, choose date and model.");
+      return;
+    }
 
-    const targetDate = addDays(date, horizon);
-    const pred = seedValue(store, item, horizon);
+    const resolvedItem = resolveItemInput(itemRaw);
 
-    const bandLo = Math.max(0, Math.round((pred * 0.82) * 10) / 10);
-    const bandHi = Math.round((pred * 1.18) * 10) / 10;
+    if (!resolvedItem) {
+      alert("This item is not available in the trained set for the selected store. Enter Item 1 style alias or valid numeric item_nbr.");
+      return;
+    }
 
-    $("outEmpty")?.classList.add("hidden");
-    $("outCard")?.classList.remove("hidden");
+    const qs = new URLSearchParams({
+      store: String(store),
+      item: String(resolvedItem),
+      date_from: date,
+      date_to: date,
+      model: String(model),
+    });
 
-    $("outModel").textContent = modelName;
-    $("outTargetDate").textContent = targetDate;
-    $("outPred").textContent = `${pred} units`;
-    $("outBand").textContent = `${bandLo} – ${bandHi} units`;
+    try {
+      const payload = await fetchJson(`/predict/timeseries?${qs.toString()}`);
+      renderPrediction(payload);
+    } catch (err) {
+      alert(`Prediction failed: ${err.message}`);
+    }
   });
 }
 

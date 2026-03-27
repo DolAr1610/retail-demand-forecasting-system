@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Demand Forecast MVP • Predict</title>
-  <meta name="description" content="Prediction form (stub) for demand forecasting." />
+  <meta name="description" content="Demand forecasting form with real backend prediction." />
   <link rel="stylesheet" href="/ui/assets/styles.css" />
 </head>
 
@@ -14,7 +14,7 @@
       <a class="brand" href="/ui/">
         <span class="brand-dot"></span>
         <span>Demand Forecast MVP</span>
-        <span class="badge">UI stub</span>
+        <span class="badge">Forecast</span>
       </a>
 
       <nav class="nav">
@@ -22,6 +22,7 @@
         <a class="nav-link" href="/ui/predict">Predict</a>
         <a class="nav-link" href="/ui/analytics">Analytics</a>
         <a class="nav-link" href="/ui/about">About</a>
+        <a class="nav-link" href="/ui/agent">Agent</a>
       </nav>
     </div>
   </header>
@@ -30,7 +31,6 @@
     <section class="page-head">
       <div>
         <h1>Predict</h1>
-  
       </div>
     </section>
 
@@ -38,7 +38,7 @@
       <div class="card col-6">
         <div class="card-head">
           <h2>Inputs</h2>
-          <span class="pill">Stub</span>
+          <span class="pill">Live</span>
         </div>
 
         <form id="predictForm" class="form">
@@ -51,74 +51,78 @@
           <div class="row">
             <label class="field">
               <span>Store</span>
-              <input id="inpStore" type="number" min="1" step="1" />
+              <select id="inpStore"></select>
             </label>
 
             <label class="field">
               <span>Item</span>
-              <input id="inpItem" type="number" min="1" step="1" placeholder="e.g., 99197" />
+              <input
+                id="inpItem"
+                type="text"
+                placeholder="Enter Item 1 or item_nbr"
+                autocomplete="off"
+              />
+              <small class="muted" id="itemHint">
+                You can enter Item 1 or a numeric item_nbr.
+              </small>
             </label>
           </div>
-
-          <label class="field">
-            <span>Forecast horizon</span>
-            <select id="inpHorizon">
-              <option value="1">Next-day</option>
-              <option value="7">Next-week</option>
-            </select>
-          </label>
 
           <label class="field">
             <span>Model</span>
             <select id="inpModel"></select>
           </label>
 
-          <button class="btn" type="submit">Run prediction</button>
-
+          <button class="btn" type="submit">Get forecast</button>
         </form>
       </div>
 
       <div class="card col-6">
         <div class="card-head">
-          <h2>Output</h2>
-          <span class="pill">Preview</span>
+          <h2>Prediction result</h2>
         </div>
 
-        <div id="outEmpty" class="empty">
-          Fill the form and click <b>Run prediction</b>.
-        </div>
 
         <div id="outCard" class="result hidden">
-          <div class="result-title">Prediction result</div>
-
           <div class="facts">
             <div class="fact">
               <div class="fact-k">Model</div>
               <div class="fact-v" id="outModel">—</div>
             </div>
+
             <div class="fact">
-              <div class="fact-k">Target date</div>
+              <div class="fact-k">Date</div>
               <div class="fact-v" id="outTargetDate">—</div>
             </div>
+
+            <div class="fact">
+              <div class="fact-k">Item</div>
+              <div class="fact-v" id="outItemLabel">—</div>
+            </div>
+
             <div class="fact">
               <div class="fact-k">Predicted sales</div>
               <div class="fact-v" id="outPred">—</div>
             </div>
+
             <div class="fact">
-              <div class="fact-k">Confidence band</div>
-              <div class="fact-v" id="outBand">—</div>
+              <div class="fact-k">Actual</div>
+              <div class="fact-v" id="outActual">—</div>
+            </div>
+
+            <div class="fact">
+              <div class="fact-k">Abs error</div>
+              <div class="fact-v" id="outAbsError">—</div>
             </div>
           </div>
-
         </div>
       </div>
     </section>
   </main>
 
   <footer class="footer">
-    <div class="container footer-inner">
+    <div class="container footer-inner single-center">
       <span>Demand Forecast MVP • Predict</span>
-      <span class="muted">Stub-only (backend-ready)</span>
     </div>
   </footer>
 

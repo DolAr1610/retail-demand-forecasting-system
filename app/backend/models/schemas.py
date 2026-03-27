@@ -16,8 +16,8 @@ class DataStatusResponse(BaseModel):
     stores_count: Optional[int] = None
     items_count: Optional[int] = None
 
-    date_min: Optional[str] = None  # ISO date
-    date_max: Optional[str] = None  # ISO date
+    date_min: Optional[str] = None
+    date_max: Optional[str] = None
 
     notes: List[str] = Field(default_factory=list)
 
@@ -34,9 +34,9 @@ class PredictRow(BaseModel):
     date: str
     store_nbr: int
     item_nbr: int
-    actual: float
     pred: float
-    abs_error: float
+    actual: Optional[float] = None
+    abs_error: Optional[float] = None
     ape: Optional[float] = None
 
 
@@ -45,5 +45,6 @@ class PredictTimeseriesResponse(BaseModel):
     item_nbr: int
     date_from: Optional[str] = None
     date_to: Optional[str] = None
+    model_name: Optional[str] = None
     rows: List[PredictRow]
     count: int

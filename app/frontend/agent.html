@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Demand Forecast MVP • Agent</title>
+  <meta name="description" content="Agent chat page for the retail forecasting assistant." />
+  <link rel="stylesheet" href="/ui/assets/styles.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="/ui/">
+        <span class="brand-dot"></span>
+        <span>Demand Forecast MVP</span>
+        <span class="badge">Agent</span>
+      </a>
+
+      <nav class="nav">
+        <a class="nav-link" href="/ui/">Home</a>
+        <a class="nav-link" href="/ui/predict">Predict</a>
+        <a class="nav-link" href="/ui/analytics">Analytics</a>
+        <a class="nav-link" href="/ui/about">About</a>
+        <a class="nav-link" href="/ui/agent">Agent</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="page-head">
+      <div>
+        <h1>Agent</h1>
+        <p class="muted">Procurement and forecasting assistant for the retail demand system.</p>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card col-12">
+        <div class="card-head">
+          <h2>Agent chat</h2>
+          <span class="pill">Live</span>
+        </div>
+
+        <div class="agent-layout">
+          <div class="agent-side">
+
+            <div class="fact">
+              <div class="fact-k">Role</div>
+              <div class="fact-v">Retail procurement assistant</div>
+            </div>
+
+            <div class="fact">
+              <div class="fact-k">Capabilities</div>
+              <div class="fact-v">
+                Forecast demand, explain predictions, recommend order quantities.
+              </div>
+            </div>
+          </div>
+
+          <div class="agent-chat-card">
+            <div id="chatMessages" class="chat-messages">
+              <div class="chat-msg chat-msg-agent">
+                <div class="chat-bubble">
+                  Hello. I can help you with demand forecasts, prediction explanations, and procurement recommendations.
+                </div>
+              </div>
+            </div>
+
+            <form id="agentForm" class="chat-input-row">
+              <input
+                id="agentInput"
+                class="chat-input"
+                type="text"
+                placeholder="Ask about forecast, explanation, or recommended order..."
+                autocomplete="off"
+              />
+              <button id="agentSendBtn" class="btn" type="submit">Send</button>
+            </form>
+
+            <div class="small muted">
+              Example: What is the forecast for Item 5 in Store 44 on 2017-07-16?
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner single-center">
+      <span>Demand Forecast MVP • Agent</span>
+    </div>
+  </footer>
+
+  <script type="module" src="/ui/assets/app.js"></script>
+  <script type="module" src="/ui/assets/agent.js"></script>
+</body>
+</html>

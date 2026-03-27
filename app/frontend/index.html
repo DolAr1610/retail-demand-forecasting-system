@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Demand Forecast MVP • Home</title>
-  <meta name="description" content="Documentation-first UI stub for a demand forecasting project." />
+  <meta name="description" content="Demand forecasting dashboard home page." />
   <link rel="stylesheet" href="/ui/assets/styles.css" />
 </head>
 
@@ -14,7 +14,7 @@
       <a class="brand" href="/ui/">
         <span class="brand-dot"></span>
         <span>Demand Forecast MVP</span>
-        <span class="badge">UI stub</span>
+        <span class="badge">Dashboard</span>
       </a>
 
       <nav class="nav">
@@ -22,6 +22,7 @@
         <a class="nav-link" href="/ui/predict">Predict</a>
         <a class="nav-link" href="/ui/analytics">Analytics</a>
         <a class="nav-link" href="/ui/about">About</a>
+        <a class="nav-link" href="/ui/agent">Agent</a>
       </nav>
     </div>
   </header>
@@ -31,9 +32,7 @@
       <div>
         <h1>Demand Forecasting Dashboard</h1>
 
-
         <div class="hero-actions">
-          <!-- ✅ IMPORTANT: no .html here -->
           <a class="btn" href="/ui/predict">Open Predict</a>
           <a class="btn btn-ghost" href="/ui/analytics">Open Analytics</a>
         </div>
@@ -41,26 +40,26 @@
 
       <div class="hero-card">
         <div class="kpi">
-          <div class="kpi-label">Dataset window (placeholder)</div>
-          <div class="kpi-value" id="dsWindow">1 Jan 2013 → 15 Aug 2017</div>
-          <div class="kpi-sub">Shown as a stable range for documentation & UI layout.</div>
+          <div class="kpi-label">Dataset window</div>
+          <div class="kpi-value" id="dsWindow">—</div>
+          <div class="kpi-sub">Loaded automatically from artifact metadata.</div>
         </div>
 
         <div class="kpi-grid">
           <div class="kpi mini">
             <div class="kpi-label">Store</div>
-            <div class="kpi-value" id="subsetStore">1</div>
-            <div class="kpi-sub">Single-store subset (demo).</div>
+            <div class="kpi-value" id="subsetStore">—</div>
+            <div class="kpi-sub">Default store from current artifact package.</div>
           </div>
           <div class="kpi mini">
             <div class="kpi-label">Families</div>
-            <div class="kpi-value" id="subsetFamilies">5</div>
-            <div class="kpi-sub">Top families by volume.</div>
+            <div class="kpi-value" id="subsetFamilies">—</div>
+            <div class="kpi-sub">Loaded from current catalog.</div>
           </div>
           <div class="kpi mini">
             <div class="kpi-label">Items</div>
-            <div class="kpi-value" id="subsetItems">200</div>
-            <div class="kpi-sub">40 items × 5 families.</div>
+            <div class="kpi-value" id="subsetItems">—</div>
+            <div class="kpi-sub">Eligible store-item pairs in the artifact package.</div>
           </div>
         </div>
       </div>
@@ -69,48 +68,43 @@
     <section class="grid">
       <div class="card col-6">
         <div class="card-head">
-          <h2>Global metrics (range)</h2>
-          <span class="pill">Latest run </span>
+          <h2>Global metrics</h2>
+          <span class="pill">Live</span>
         </div>
 
         <div class="metrics">
           <div class="metric">
-            <div class="metric-name">RMSE (log1p)</div>
-            <div class="metric-val">0.44 – 0.62</div>
-            <div class="metric-note">From strong model to naive persistence baseline.</div>
+            <div class="metric-name">RMSE</div>
+            <div class="metric-val" id="metricRmse">—</div>
+            <div class="metric-note" id="metricRmseNote">—</div>
           </div>
           <div class="metric">
             <div class="metric-name">R²</div>
-            <div class="metric-val">0.61 – 0.81</div>
-            <div class="metric-note">Higher is better.</div>
+            <div class="metric-val" id="metricR2">—</div>
+            <div class="metric-note" id="metricR2Note">—</div>
           </div>
           <div class="metric">
-            <div class="metric-name">WAPE (sales)</div>
-            <div class="metric-val">0.26 – 0.43</div>
-            <div class="metric-note">Volume-weighted absolute error.</div>
+            <div class="metric-name">WAPE</div>
+            <div class="metric-val" id="metricWape">—</div>
+            <div class="metric-note" id="metricWapeNote">—</div>
           </div>
           <div class="metric">
-            <div class="metric-name">MAE (sales)</div>
-            <div class="metric-val">~9 – 16</div>
-            <div class="metric-note">Average absolute error in sales units.</div>
+            <div class="metric-name">MAE</div>
+            <div class="metric-val" id="metricMae">—</div>
+            <div class="metric-note" id="metricMaeNote">—</div>
           </div>
         </div>
-
       </div>
 
       <div class="card col-6">
         <div class="card-head">
-          <h2>Model info</h2>
-          <span class="pill">What’s included</span>
+          <h2>Available models</h2>
+          <span class="pill">Auto-loaded</span>
         </div>
 
-        <ul class="list">
-          <li><b>Persistence baseline</b> — assumes the next value equals the most recent observed value.</li>
-          <li><b>Rolling Mean (7 days)</b> — a short-term moving average to smooth noise.</li>
-          <li><b>Gradient-Boosted Trees</b> — strong non-linear model for structured tabular signals.</li>
-          <li><b>Random Forest</b> — robust ensemble model, stable across noisy retail patterns.</li>
+        <ul class="list" id="modelList">
+          <li>Loading models...</li>
         </ul>
-
       </div>
 
       <div class="card col-12">
@@ -122,15 +116,19 @@
         <div class="quick-links">
           <a class="quick" href="/ui/predict">
             <div class="quick-title">Predict</div>
-            <div class="quick-sub">Inputs + a placeholder results panel</div>
+            <div class="quick-sub">Choose store, item, date and model to get forecast.</div>
           </a>
           <a class="quick" href="/ui/analytics">
             <div class="quick-title">Analytics</div>
-            <div class="quick-sub">Metrics table + simple comparison charts</div>
+            <div class="quick-sub">Review metrics and compare trained models.</div>
+          </a>
+          <a class="quick" href="/ui/agent">
+            <div class="quick-title">Agent</div>
+            <div class="quick-sub">Chat with the retail forecasting assistant.</div>
           </a>
           <a class="quick" href="/ui/about">
             <div class="quick-title">About</div>
-            <div class="quick-sub">Purpose, audience, workflow (non-technical)</div>
+            <div class="quick-sub">Project summary, workflow and scope.</div>
           </a>
         </div>
       </div>
@@ -138,12 +136,12 @@
   </main>
 
   <footer class="footer">
-    <div class="container footer-inner">
-      <span>Demand Forecast MVP • UI placeholder for documentation</span>
-      <span class="muted">Routes are /ui/predict, /ui/analytics, /ui/about</span>
+    <div class="container footer-inner single-center">
+      <span>Demand Forecast MVP • Home</span>
     </div>
   </footer>
 
   <script type="module" src="/ui/assets/app.js"></script>
+  <script type="module" src="/ui/assets/home.js"></script>
 </body>
 </html>

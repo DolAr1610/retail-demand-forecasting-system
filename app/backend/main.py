@@ -11,7 +11,7 @@ from app.backend.api.routes_health import router as health_router
 from app.backend.api.routes_data import router as data_router
 from app.backend.api.routes_metrics import router as metrics_router
 from app.backend.api.routes_predict import router as predict_router
-
+from app.backend.api.routes_agent import router as agent_router
 
 def create_app() -> FastAPI:
     settings = get_settings()
@@ -36,6 +36,7 @@ def create_app() -> FastAPI:
     app.include_router(data_router)
     app.include_router(metrics_router)
     app.include_router(predict_router)
+    app.include_router(agent_router)
 
     return app
 
@@ -68,3 +69,7 @@ def ui_analytics():
 @app.get("/ui/about", include_in_schema=False)
 def ui_about():
     return FileResponse(str(FRONT_DIR / "about.html"))
+
+@app.get("/ui/agent", include_in_schema=False)
+def ui_agent():
+    return FileResponse(str(FRONT_DIR / "agent.html"))
