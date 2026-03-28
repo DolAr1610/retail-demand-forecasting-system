@@ -1,0 +1,373 @@
+# Retail Demand Forecasting System
+
+An intelligent system for automating retail replenishment decisions with machine learning, interactive analytics, and an AI copilot for forecast-based decision support.
+
+## Overview
+
+This project combines classical demand forecasting workflows with an application layer that makes results usable for business users. The system is designed to help procurement teams, supply planners, and operations managers:
+
+- forecast item-level demand
+- compare trained forecasting models
+- review quality metrics in a compact dashboard
+- ask natural-language questions about forecasts
+- estimate replenishment quantities using current stock, safety stock, and lead time
+
+The application includes:
+
+- a **FastAPI backend** for model access and business logic
+- a **static frontend UI** served by the backend
+- an **LLM-based retail copilot** with tool-calling for forecast, explanation, and order recommendations
+- a **notebook-driven experimentation layer** for training and artifact preparation
+
+---
+
+## Key Features
+
+### 1. Forecasting API
+Query demand forecasts for a specific store, item, and date or date range.
+
+### 2. Model Comparison and Metrics
+Inspect global metrics such as RMSE, R², WAPE, and MAE, and compare available trained models.
+
+### 3. Business-Friendly UI
+The frontend provides several pages for demonstration and documentation:
+
+- **Home** – project summary, available models, global metrics
+- **Predict** – select store, item, date, and model for forecast lookup
+- **Analytics** – compact view of model quality metrics
+- **Agent** – chat-based forecasting and replenishment assistant
+- **About** – project purpose and workflow overview
+
+### 4. AI Procurement Copilot
+The agent can:
+
+- return factual forecasts
+- explain predictions using model feature importance
+- recommend order quantities
+- turn technical outputs into business language
+
+---
+
+## System Architecture
+
+```text
+User / Browser
+      |
+      v
+Frontend UI (static HTML/CSS/JS)
+      |
+      v
+FastAPI Backend
+  |       |         |
+  |       |         +--> Agent service (LLM + tool calling)
+  |       +------------> Metrics service
+  +--------------------> Predictor service
+                          |
+                          v
+                 Artifact loader / trained model outputs
+```
+
+### Backend responsibilities
+
+- serve API endpoints
+- load trained artifacts and metadata
+- return forecasts and metrics
+- expose an agent endpoint for natural-language interaction
+- serve the frontend pages and static assets
+
+### Frontend responsibilities
+
+- show project overview
+- collect prediction inputs
+- display model metrics
+- provide a chat interface for the assistant
+
+---
+
+## Project Structure
+
+```text
+retail-demand-forecasting-system/
+└── app/
+    ├── backend/
+    │   ├── api/              # FastAPI routes
+    │   ├── models/           # Pydantic schemas
+    │   ├── prompts/          # Agent prompt templates
+    │   ├── services/         # Prediction, metrics, loader, LLM, agent logic
+    │   ├── utils/            # Logging and helper utilities
+    │   ├── main.py           # FastAPI app entry point
+    │   ├── requirements.txt  # Backend dependencies
+    │   └── settings.py       # Environment-driven configuration
+    ├── frontend/             # Static UI pages and assets
+    └── notebooks/            # Experiments, training, and analysis notebooks
+```
+
+---
+
+## Tech Stack
+
+### Backend
+- FastAPI
+- Uvicorn
+- Pydantic / pydantic-settings
+- Pandas
+- NumPy
+- scikit-learn
+- XGBoost
+- LightGBM
+- Jinja2
+- httpx
+
+### Frontend
+- HTML
+- CSS
+- JavaScript
+
+### ML / Forecasting
+- trained forecasting artifacts loaded from the artifact directory
+- baseline and tree-based models
+- model quality evaluation through regression metrics
+
+### LLM Integration
+- OpenRouter-compatible chat completion endpoint
+- tool-calling agent flow for structured forecast operations
+
+---
+
+## Available API Endpoints
+
+### Health
+- `GET /health` – service health check
+- `GET /agent/health` – agent health check
+
+### Data helpers
+- `GET /data/families`
+- `GET /data/stores`
+- `GET /data/items`
+- `GET /data/items-labeled`
+- `GET /data/models`
+
+### Metrics
+- `GET /metrics/global`
+- `GET /metrics/model_info`
+
+### Forecasting
+- `GET /predict/timeseries`
+
+Example:
+
+```bash
+curl "http://127.0.0.1:8000/predict/timeseries?store=44&item=5&date_from=2017-07-16"
+```
+
+### Agent
+- `POST /agent/chat`
+
+Example:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/agent/chat" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "What is the forecast for Item 5 in Store 44 on 2017-07-16?",
+    "context": {},
+    "history": []
+  }'
+```
+
+---
+
+## Frontend Routes
+
+Once the backend is running, the UI is available at:
+
+- `/ui` – Home
+- `/ui/predict` – Predict page
+- `/ui/analytics` – Analytics page
+- `/ui/about` – About page
+- `/ui/agent` – Agent chat page
+
+FastAPI Swagger docs are typically available at:
+
+- `/docs`
+
+---
+
+## Configuration
+
+Application settings are loaded from environment variables with the prefix `FAVORITA_`.
+
+### Important settings
+
+```env
+FAVORITA_ARTIFACTS_DIR=data/artifacts/active
+FAVORITA_LOG_LEVEL=INFO
+FAVORITA_DEFAULT_STORE_NBR=45
+FAVORITA_CORS_ALLOW_ORIGINS=*
+
+# Optional LLM settings
+FAVORITA_OPENROUTER_API_KEY=your_api_key_here
+FAVORITA_OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+FAVORITA_OPENROUTER_MODEL=openrouter/free
+FAVORITA_OPENROUTER_APP_NAME=Retail Demand Forecast MVP
+FAVORITA_OPENROUTER_SITE_URL=http://localhost:8000
+```
+
+### Notes
+
+- If `FAVORITA_OPENROUTER_API_KEY` is not set, the agent falls back to deterministic forecast behavior instead of full conversational LLM mode.
+- Artifacts are expected under `data/artifacts/active` unless overridden.
+
+---
+
+## Installation
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/DolAr1610/retail-demand-forecasting-system.git
+cd retail-demand-forecasting-system
+```
+
+### 2. Create and activate a virtual environment
+
+**Windows (PowerShell)**
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+**Linux / macOS**
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r app/backend/requirements.txt
+```
+
+### 4. Create a `.env` file (optional but recommended)
+
+```env
+FAVORITA_ARTIFACTS_DIR=data/artifacts/active
+FAVORITA_LOG_LEVEL=INFO
+FAVORITA_CORS_ALLOW_ORIGINS=*
+FAVORITA_DEFAULT_STORE_NBR=45
+```
+
+Add OpenRouter variables only if you want the LLM-powered agent.
+
+---
+
+## Running the Application
+
+Start the FastAPI server from the repository root:
+
+```bash
+uvicorn app.backend.main:app --reload
+```
+
+Open in your browser:
+
+- API docs: `http://127.0.0.1:8000/docs`
+- Home UI: `http://127.0.0.1:8000/ui`
+- Agent UI: `http://127.0.0.1:8000/ui/agent`
+
+---
+
+## Example User Flows
+
+### Forecast lookup
+A user selects a store, item, date, and model on the Predict page or calls the `/predict/timeseries` endpoint.
+
+### Metrics review
+A user opens the Analytics page to compare model quality and inspect summary metrics.
+
+### Agent interaction
+A user asks a natural-language question such as:
+
+```text
+What is the forecast for Item 5 in Store 44 on 2017-07-16?
+```
+
+The agent resolves context, calls the appropriate forecasting tool, and returns a structured business answer.
+
+### Replenishment recommendation
+A user asks how much to order and provides optional values such as current stock, safety stock, and lead time.
+
+---
+
+## How the Agent Works
+
+The retail copilot is built as a tool-using assistant. It does not invent forecast values. Instead, it:
+
+1. parses the user request
+2. resolves item, store, date, and optional model information
+3. chooses a tool depending on the task
+4. returns the result in business-friendly language
+
+Supported tool actions:
+
+- `tool_predict_item` – forecast demand
+- `tool_explain_prediction` – explain drivers behind the forecast
+- `tool_recommend_order` – recommend replenishment quantities
+
+---
+
+## Use Cases
+
+- retail demand forecasting demos
+- student thesis or capstone presentation
+- ML model comparison showcase
+- procurement decision-support prototype
+- intelligent replenishment assistant MVP
+
+---
+
+## Current Focus / MVP Scope
+
+This repository is best understood as an MVP that combines:
+
+- trained forecasting artifacts
+- model evaluation access
+- lightweight dashboard pages
+- a practical AI assistant over forecast data
+
+It is especially useful for demonstrations, academic projects, and decision-support prototypes.
+
+---
+
+## Future Improvements
+
+Possible next steps:
+
+- Dockerization for easier deployment
+- richer charts on the Analytics page
+- authentication and user roles
+- multi-store planning dashboards
+- SHAP-based local explanations
+- inventory policy simulation
+- batch forecast export and reporting
+
+---
+
+## Author
+
+Created by **DolAr1610**.
+
+---
+
+## License
+
+Add a license section here if you plan to publish or reuse the project publicly.
+
+Example:
+
+```text
+MIT License
+```
