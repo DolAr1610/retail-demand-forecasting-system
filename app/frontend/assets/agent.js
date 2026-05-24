@@ -2,7 +2,6 @@ function $(id) {
   return document.getElementById(id);
 }
 
-console.log("AGENT JS NEW VERSION LOADED");
 
 function escapeHtml(text) {
   return String(text)
@@ -13,7 +12,11 @@ function escapeHtml(text) {
 
 function renderSimpleMarkdown(text) {
   return escapeHtml(text)
+    .replace(/^\s*###\s+(.*)$/gm, "<h3>$1</h3>")
+    .replace(/^\s*##\s+(.*)$/gm, "<h2>$1</h2>")
+    .replace(/^\s*#\s+(.*)$/gm, "<h1>$1</h1>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/^\s*-\s+(.*)$/gm, "• $1")
     .replace(/\n/g, "<br>");
 }
 
@@ -28,8 +31,6 @@ function appendMessage(role, text) {
   bubble.className = "chat-bubble";
 
   if (role === "agent") {
-    console.log("RAW AGENT TEXT:", text);
-    console.log("RENDERED HTML:", renderSimpleMarkdown(text));
     bubble.innerHTML = renderSimpleMarkdown(text);
   } else {
     bubble.textContent = text;
@@ -78,7 +79,6 @@ function initAgentChat() {
 
   if (!form || !input) return;
 
-  appendMessage("agent", "Test **bold** message");
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();

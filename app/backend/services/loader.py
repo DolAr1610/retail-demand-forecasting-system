@@ -27,6 +27,7 @@ class ArtifactLoader:
         self._available_dates: Optional[pd.DataFrame] = None
         self._item_aliases = None
         self._serialized_model_index: Optional[List[Dict[str, Any]]] = None
+        self._stock_inventory: Optional[pd.DataFrame] = None
 
     def _root(self) -> Path:
         return Path(self.paths.root)
@@ -194,6 +195,43 @@ class ArtifactLoader:
         if self._model_info is None:
             self._model_info = self._json("metadata/model_info.json")
         return self._model_info
+
+    def _find_stock_inventory_paths(self) -> list[Path]:
+        paths: list[Path] = []
+        current = self._root()
+        for _ in range(6):
+            for filename in ["stock_inventory.csv", "stock_inventory_store44.csv"]:
+                candidate = current / filename
+                if candidate.exists():
+                    paths.append(candidate)
+            if current == current.parent:
+                break
+            current = current.parent
+        if not paths:
+            raise FileNotFoundError(f"Stock inventory CSV not found in project ancestors from {self._root()}")
+        return paths
+
+    def _find_stock_inventory_path(self) -> Path:
+        paths = self._find_stock_inventory_paths()
+        return paths[0]
+
+    def load_stock_inventory(self) -> pd.DataFrame:
+        if self._stock_inventory is None:
+            csv_paths = self._find_stock_inventory_paths()
+            df_list = [pd.read_csv(csv_path) for csv_path in csv_paths]
+            df = pd.concat(df_list, ignore_index=True)
+            if "stock_date" in df.columns:
+                df["stock_date"] = pd.to_datetime(df["stock_date"], errors="coerce").dt.strftime("%Y-%m-%d")
+            if "store_nbr" in df.columns:
+                df["store_nbr"] = pd.to_numeric(df["store_nbr"], errors="coerce").astype(int)
+            if "item_nbr" in df.columns:
+                df["item_nbr"] = pd.to_numeric(df["item_nbr"], errors="coerce").astype(int)
+            if "current_stock" in df.columns:
+                df["current_stock"] = pd.to_numeric(df["current_stock"], errors="coerce")
+            if set(["store_nbr", "item_nbr", "stock_date"]).issubset(df.columns):
+                df = df.drop_duplicates(subset=["store_nbr", "item_nbr", "stock_date"], keep="last")
+            self._stock_inventory = df
+        return self._stock_inventory
 
     def load_timeseries(
         self,

@@ -5,6 +5,7 @@ import math
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+import textwrap
 
 import pandas as pd
 
@@ -19,6 +20,7 @@ class ParsedAgentContext:
     store_nbr: Optional[int] = None
     item_nbr: Optional[int] = None
     item_alias: Optional[str] = None
+    stock_date: Optional[str] = None
     date_from: Optional[str] = None
     date_to: Optional[str] = None
     model_name: Optional[str] = None
@@ -60,6 +62,7 @@ class AgentService:
                     "store_nbr": parsed.store_nbr,
                     "item_nbr": parsed.item_nbr,
                     "item_alias": parsed.item_alias,
+                    "stock_date": parsed.stock_date,
                     "date_from": parsed.date_from,
                     "date_to": parsed.date_to,
                     "model_name": parsed.model_name,
@@ -157,6 +160,7 @@ class AgentService:
                     "store_nbr": parsed.store_nbr,
                     "item_nbr": parsed.item_nbr,
                     "item_alias": parsed.item_alias,
+                    "stock_date": parsed.stock_date,
                     "date_from": parsed.date_from,
                     "date_to": parsed.date_to,
                     "model_name": parsed.model_name,
@@ -177,6 +181,7 @@ class AgentService:
                 "store_nbr": parsed.store_nbr,
                 "item_nbr": parsed.item_nbr,
                 "item_alias": parsed.item_alias,
+                "stock_date": parsed.stock_date,
                 "date_from": parsed.date_from,
                 "date_to": parsed.date_to,
                 "model_name": parsed.model_name,
@@ -214,6 +219,7 @@ class AgentService:
             store_nbr=self._safe_int(args.get("store_nbr")) if args.get("store_nbr") is not None else parsed.store_nbr,
             item_nbr=self._resolve_item(args.get("item")) if args.get("item") is not None else parsed.item_nbr,
             item_alias=parsed.item_alias,
+            stock_date=self._normalize_date(args.get("stock_date")) if args.get("stock_date") else parsed.stock_date,
             date_from=self._normalize_date(args.get("date_from")) if args.get("date_from") else parsed.date_from,
             date_to=self._normalize_date(args.get("date_to")) if args.get("date_to") else parsed.date_to,
             model_name=self._resolve_model_name(args.get("model_name")) if args.get("model_name") else parsed.model_name,
@@ -271,7 +277,7 @@ class AgentService:
                 "type": "function",
                 "function": {
                     "name": "tool_recommend_order",
-                    "description": "Recommend how much to order using forecast, current stock, safety stock and lead time.",
+                    "description": "Recommend how much to order using forecast and inventory. Current stock is read automatically from available stock inventory files. If the exact stock date is missing, the nearest available inventory snapshot is used.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -279,6 +285,7 @@ class AgentService:
                             "item": {"type": "string"},
                             "date_from": {"type": "string", "description": "YYYY-MM-DD"},
                             "date_to": {"type": "string", "description": "YYYY-MM-DD"},
+                            "stock_date": {"type": "string", "description": "YYYY-MM-DD stock date to read current inventory"},
                             "model_name": {"type": "string"},
                             "current_stock": {"type": "number"},
                             "safety_stock": {"type": "number"},
@@ -396,6 +403,9 @@ class AgentService:
             end_date = pd.Timestamp(parsed.date_from) + pd.Timedelta(days=max(lead_time_days - 1, 0))
             parsed.date_to = str(end_date.date())
 
+        if parsed.stock_date is None and parsed.date_from:
+            parsed.stock_date = parsed.date_from
+
         pred_result = self.tool_predict_item(parsed)
         if not pred_result.get("ok"):
             return {
@@ -405,7 +415,23 @@ class AgentService:
             }
 
         forecast_total = float(pred_result["forecast_total"])
-        current_stock = float(parsed.current_stock) if parsed.current_stock is not None else 0.0
+
+        current_stock = parsed.current_stock
+        stock_date_used = parsed.stock_date
+        if current_stock is None and parsed.store_nbr is not None and parsed.item_nbr is not None and parsed.stock_date is not None:
+            current_stock, stock_date_used = self._get_current_stock(parsed.store_nbr, parsed.item_nbr, parsed.stock_date)
+
+        if current_stock is None:
+            return {
+                "ok": False,
+                "tool": "tool_recommend_order",
+                "error": (
+                    f"No stock data found for store {parsed.store_nbr}, item {parsed.item_nbr} "
+                    f"on {parsed.stock_date}. Provide current_stock or a valid stock_date."
+                ),
+            }
+
+        current_stock = float(current_stock)
 
         if parsed.safety_stock is not None:
             safety_stock = float(parsed.safety_stock)
@@ -416,6 +442,78 @@ class AgentService:
 
         recommended_order_qty = max(0, math.ceil(forecast_total + safety_stock - current_stock))
         reorder_point = float(forecast_total + safety_stock)
+        coverage_gap = float(max(0, reorder_point - current_stock))
+        stock_after_forecast = float(current_stock - forecast_total)
+
+        if forecast_total > 0:
+            coverage_ratio = float(current_stock / forecast_total)
+        else:
+            coverage_ratio = None
+
+        status = "stock_shortfall" if recommended_order_qty > 0 else "stock_sufficient"
+
+        if recommended_order_qty > 0:
+            urgency = "high" if current_stock < forecast_total else "medium"
+        else:
+            urgency = "low"
+
+        stock_date_label = stock_date_used or parsed.stock_date or "provided stock date"
+
+        def fmt(value: float) -> str:
+            return f"{value:.2f}".rstrip("0").rstrip(".")
+
+        if recommended_order_qty > 0:
+            main_recommendation = (
+                f"I recommend ordering **{recommended_order_qty} units** of "
+                f"{pred_result['item_label']} for Store {parsed.store_nbr}."
+            )
+            business_reasoning = (
+                f"The current stock is not enough to safely cover the expected demand "
+                f"plus the safety buffer. Without replenishment, the store may face a "
+                f"stockout risk during the selected forecast period."
+            )
+            next_step = (
+                f"Place an order for **{recommended_order_qty} units** and monitor actual sales "
+                f"after the next inventory update."
+            )
+        else:
+            main_recommendation = (
+                f"No immediate order is required for {pred_result['item_label']} "
+                f"in Store {parsed.store_nbr}."
+            )
+            business_reasoning = (
+                f"The current stock is sufficient to cover the expected demand and the safety buffer. "
+                f"Ordering more now may increase the risk of unnecessary overstock."
+            )
+            next_step = (
+                "Continue monitoring demand and update the recommendation after the next sales or inventory refresh."
+            )
+
+        explanation = textwrap.dedent(f"""
+        ### Recommendation
+
+        {main_recommendation}
+
+        ### Calculation
+
+        - Forecasted demand: **{fmt(forecast_total)} units**
+        - Current stock: **{fmt(current_stock)} units**
+        - Safety stock: **{fmt(safety_stock)} units**
+        - Reorder point: **{fmt(reorder_point)} units**
+        - Coverage gap: **{fmt(coverage_gap)} units**
+        - Recommended order quantity: **{recommended_order_qty} units**
+
+        ### Business reasoning
+
+        {business_reasoning}
+
+        After covering the forecasted demand, the expected remaining stock would be **{fmt(stock_after_forecast)} units**.  
+        The stock value was taken from the inventory snapshot dated **{stock_date_label}**.
+
+        ### Next step
+
+        {next_step}
+        """).strip()
 
         return {
             "ok": True,
@@ -428,26 +526,111 @@ class AgentService:
             "recommended_order_qty": int(recommended_order_qty),
             "reorder_point": reorder_point,
             "lead_time_days": parsed.lead_time_days or 1,
+            "coverage_gap": coverage_gap,
+            "stock_after_forecast": stock_after_forecast,
+            "coverage_ratio": coverage_ratio,
+            "status": status,
+            "urgency": urgency,
             "formula": "recommended_order = max(0, forecast_total + safety_stock - current_stock)",
+            "stock_date_used": stock_date_label,
+            "explanation": explanation,
         }
+
+    def _get_current_stock(self, store_nbr: int, item_nbr: int, stock_date: str) -> tuple[Optional[float], Optional[str]]:
+        try:
+            inventory = self.loader.load_stock_inventory()
+            exact = inventory[
+                (inventory["store_nbr"] == store_nbr) &
+                (inventory["item_nbr"] == item_nbr) &
+                (inventory["stock_date"] == stock_date)
+            ]
+            if not exact.empty:
+                return float(exact["current_stock"].iloc[0]), stock_date
+
+            alias_item_nbr = self._resolve_inventory_item_number(item_nbr)
+            if alias_item_nbr is not None and alias_item_nbr != item_nbr:
+                exact_alias = inventory[
+                    (inventory["store_nbr"] == store_nbr) &
+                    (inventory["item_nbr"] == alias_item_nbr) &
+                    (inventory["stock_date"] == stock_date)
+                ]
+                if not exact_alias.empty:
+                    return float(exact_alias["current_stock"].iloc[0]), stock_date
+
+            same_item = inventory[
+                (inventory["store_nbr"] == store_nbr) &
+                (inventory["item_nbr"] == item_nbr)
+            ].copy()
+            if same_item.empty and alias_item_nbr is not None:
+                same_item = inventory[
+                    (inventory["store_nbr"] == store_nbr) &
+                    (inventory["item_nbr"] == alias_item_nbr)
+                ].copy()
+
+            if same_item.empty:
+                return None, None
+
+            same_item["stock_date"] = pd.to_datetime(same_item["stock_date"], errors="coerce")
+            same_item = same_item.dropna(subset=["stock_date"])
+            if same_item.empty:
+                return None, None
+
+            target_date = pd.Timestamp(stock_date)
+            earlier = same_item[same_item["stock_date"] <= target_date]
+            if not earlier.empty:
+                nearest = earlier.sort_values("stock_date", ascending=False).iloc[0]
+            else:
+                nearest = same_item.sort_values("stock_date", ascending=False).iloc[0]
+
+            return float(nearest["current_stock"]), str(nearest["stock_date"].date())
+        except Exception:
+            pass
+        return None, None
+
+    def _resolve_inventory_item_number(self, item_nbr: int) -> Optional[int]:
+        aliases = self.loader.load_item_aliases()
+        for row in aliases:
+            if int(row["item_nbr"]) == int(item_nbr):
+                match = re.search(r"\b(\d+)\b", str(row.get("display_name", "")))
+                if match:
+                    alias_num = int(match.group(1))
+                    return alias_num
+        return None
 
     # ==================================================
     # FALLBACK WITHOUT LLM
     # ==================================================
     def _fallback_without_llm(self, message: str, parsed: ParsedAgentContext) -> Dict[str, Any]:
-        result = self.tool_predict_item(parsed)
-        answer = (
-            "LLM is not configured. "
-            "I can still run deterministic forecast tools, but conversational agent mode is disabled."
-        )
+        if self._is_order_recommendation_query(message):
+            result = self.tool_recommend_order(parsed)
+            tool_name = "tool_recommend_order"
+        else:
+            result = self.tool_predict_item(parsed)
+            tool_name = "tool_predict_item"
+
+        if result.get("ok") and result.get("tool") == "tool_recommend_order":
+            answer = result.get("explanation") or (
+                "I recommend ordering stock based on the forecast, safety buffer, and current inventory."
+            )
+        elif result.get("ok"):
+            answer = (
+                "LLM is not configured. I can still provide a forecast using the available deterministic tools."
+            )
+        else:
+            answer = (
+                "LLM is not configured. I attempted to run the deterministic tool, but could not produce a result. "
+                + result.get("error", "")
+            )
+
         return {
             "answer": answer,
             "detected_intent": "fallback",
-            "used_tools": ["tool_predict_item"] if result.get("ok") else [],
+            "used_tools": [tool_name] if result.get("ok") else [],
             "parsed_context": {
                 "store_nbr": parsed.store_nbr,
                 "item_nbr": parsed.item_nbr,
                 "item_alias": parsed.item_alias,
+                "stock_date": parsed.stock_date,
                 "date_from": parsed.date_from,
                 "date_to": parsed.date_to,
                 "model_name": parsed.model_name,
@@ -458,6 +641,11 @@ class AgentService:
             "data": result,
         }
 
+    def _is_order_recommendation_query(self, message: str) -> bool:
+        keywords = ["order", "замов", "закуп", "recommend", "рекоменд", "долуч", "need to order", "скільки замовити"]
+        text = message.lower()
+        return any(word in text for word in keywords)
+
     # ==================================================
     # CONTEXT EXTRACTION
     # ==================================================
@@ -467,6 +655,7 @@ class AgentService:
         parsed.store_nbr = self._safe_int(context.get("store_nbr") or context.get("store"))
         parsed.item_nbr = self._resolve_item(context.get("item_nbr") or context.get("item"))
         parsed.model_name = self._resolve_model_name(context.get("model_name") or context.get("model"))
+        parsed.stock_date = self._normalize_date(context.get("stock_date"))
         parsed.date_from, parsed.date_to = self._extract_dates_from_context(context)
         parsed.current_stock = self._safe_float(context.get("current_stock"))
         parsed.safety_stock = self._safe_float(context.get("safety_stock"))
@@ -483,8 +672,22 @@ class AgentService:
         if parsed.model_name is None:
             parsed.model_name = self._extract_model_from_text(message)
 
+        if parsed.stock_date is None:
+            parsed.stock_date = self._extract_stock_date_from_text(message)
+
         if parsed.date_from is None:
-            parsed.date_from, parsed.date_to = self._extract_dates_from_text(message)
+            parsed.date_from, parsed.date_to = self._extract_dates_from_text(message, exclude_date=parsed.stock_date)
+
+        if parsed.current_stock is None and parsed.store_nbr is not None and parsed.item_nbr is not None and parsed.stock_date is not None:
+            stock_value, stock_date_used = self._get_current_stock(
+                parsed.store_nbr,
+                parsed.item_nbr,
+                parsed.stock_date,
+            )
+
+            if stock_value is not None:
+                parsed.current_stock = stock_value
+                parsed.stock_date = stock_date_used or parsed.stock_date
 
         if parsed.current_stock is None:
             parsed.current_stock = self._extract_current_stock_from_text(message)
@@ -508,9 +711,11 @@ class AgentService:
 
         return date_from, date_to
 
-    def _extract_dates_from_text(self, text: str) -> Tuple[Optional[str], Optional[str]]:
+    def _extract_dates_from_text(self, text: str, exclude_date: Optional[str] = None) -> Tuple[Optional[str], Optional[str]]:
         # 1) ISO dates: 2017-07-18
         matches = re.findall(r"\b\d{4}-\d{2}-\d{2}\b", text)
+        if exclude_date and exclude_date in matches:
+            matches = [d for d in matches if d != exclude_date]
         if matches:
             if len(matches) == 1:
                 return matches[0], matches[0]
@@ -636,6 +841,17 @@ class AgentService:
             m = re.search(pattern, text, flags=re.IGNORECASE)
             if m:
                 return self._safe_int(m.group(1))
+        return None
+
+    def _extract_stock_date_from_text(self, text: str) -> Optional[str]:
+        patterns = [
+            r"(?:запасу на|stock on|current stock on)\s*(\d{4}-\d{2}-\d{2})",
+            r"(?:запас на|stock as of)\s*(\d{4}-\d{2}-\d{2})",
+        ]
+        for pattern in patterns:
+            m = re.search(pattern, text, flags=re.IGNORECASE)
+            if m:
+                return self._normalize_date(m.group(1))
         return None
 
     # ==================================================
